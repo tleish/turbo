@@ -31,15 +31,16 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
   }
 
   shouldInterceptLinkClick(element: Element, url: string) {
-    return this.shouldInterceptNavigation(element)
+    return this.shouldNavigateFrame(element)
   }
 
   linkClickIntercepted(element: Element, url: string) {
-    this.navigateFrame(element, url)
+    const frame = this.findFrameElement(element)
+    frame.src = url
   }
 
-  shouldInterceptFormSubmission(element: HTMLFormElement) {
-    return this.shouldInterceptNavigation(element)
+  shouldInterceptFormSubmission(element: HTMLFormElement, submitter?: HTMLElement) {
+    return this.shouldNavigateFrame(element, submitter)
   }
 
   formSubmissionIntercepted(element: HTMLFormElement, submitter?: HTMLElement) {
@@ -49,7 +50,8 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
 
     this.formSubmission = new FormSubmission(this, element, submitter)
     if (this.formSubmission.fetchRequest.isIdempotent) {
-      this.navigateFrame(element, this.formSubmission.fetchRequest.url)
+      const frame = this.findFrameElement(element, submitter)
+      frame.src = this.formSubmission.fetchRequest.url
     } else {
       this.formSubmission.start()
     }
@@ -104,7 +106,7 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
   }
 
   formSubmissionSucceededWithResponse(formSubmission: FormSubmission, response: FetchResponse) {
-    const frame = this.findFrameElement(formSubmission.formElement)
+    const frame = this.findFrameElement(formSubmission.formElement, formSubmission.submitter)
     frame.controller.loadResponse(response)
   }
 
@@ -120,13 +122,8 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
 
   }
 
-  private navigateFrame(element: Element, url: string) {
-    const frame = this.findFrameElement(element)
-    frame.src = url
-  }
-
-  private findFrameElement(element: Element) {
-    const id = element.getAttribute("data-turbo-frame")
+  private findFrameElement(element: Element, submitter?: HTMLElement) {
+    const id = submitter?.getAttribute("data-turbo-frame") || element.getAttribute("data-turbo-frame")
     return getFrameElementById(id) ?? this.element
   }
 
@@ -191,8 +188,8 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
     return false
   }
 
-  private shouldInterceptNavigation(element: Element) {
-    const id = element.getAttribute("data-turbo-frame") || this.element.getAttribute("target")
+  private shouldNavigateFrame(element: Element, submitter?: HTMLElement) {
+    const id = submitter?.getAttribute("data-turbo-frame") || element.getAttribute("data-turbo-frame") || this.element.getAttribute("target")
 
     if (!this.enabled || id == "_top") {
       return false
