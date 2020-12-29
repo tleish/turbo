@@ -116,6 +116,22 @@ export class NavigationTests extends TurboDriveTestCase {
     this.assert.equal(await this.pathname, "/src/tests/fixtures/one.html")
     this.assert.equal(await this.visitAction, "restore")
   }
+
+  async "test skip link with hash-only path"() {
+    await this.clickSelector('a[href="#main"]')
+    await this.nextBeat
+
+    this.assert.equal(await this.pathname, "/src/tests/fixtures/navigation.html")
+    this.assert.equal(await this.hash, "#main")
+    this.assert.ok(await this.isScrolledToSelector("#main"))
+
+    await this.remote.pressKeys('\uE004') // TAB
+    const activeElement = await this.remote.getActiveElement()
+    const skippedLink = await this.querySelector("#ignored-link")
+    const firstLinkWithinMain = await this.querySelector("#main a:first-of-type")
+    this.assert.notOk(await activeElement.equals(skippedLink), "skips interactive elements before #main")
+    this.assert.ok(await activeElement.equals(firstLinkWithinMain), "skips to first interactive element after #main")
+  }
 }
 
 NavigationTests.registerSuite()
