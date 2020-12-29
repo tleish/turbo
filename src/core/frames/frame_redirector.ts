@@ -1,6 +1,8 @@
 import { FormInterceptor, FormInterceptorDelegate } from "./form_interceptor"
 import { FrameElement } from "../../elements/frame_element"
 import { LinkInterceptor, LinkInterceptorDelegate } from "./link_interceptor"
+import { Location } from "../location"
+import { dispatch } from "../../util"
 
 export class FrameRedirector implements LinkInterceptorDelegate, FormInterceptorDelegate {
   readonly element: Element
@@ -29,8 +31,14 @@ export class FrameRedirector implements LinkInterceptorDelegate, FormInterceptor
 
   linkClickIntercepted(element: Element, url: string) {
     const frame = this.findFrameElement(element)
+    const location = Location.wrap(url)
+
     if (frame) {
-      frame.src = url
+      const event = dispatch("turbo:before-visit", { target: frame, bubbles: false, detail: { url: location.absoluteURL } })
+
+      if (!event.defaultPrevented) {
+        frame.src = url
+      }
     }
   }
 

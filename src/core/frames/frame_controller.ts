@@ -5,7 +5,8 @@ import { FormSubmission, FormSubmissionDelegate } from "../drive/form_submission
 import { FrameElement } from "../../elements/frame_element"
 import { LinkInterceptor, LinkInterceptorDelegate } from "./link_interceptor"
 import { Locatable, Location } from "../location"
-import { nextAnimationFrame } from "../../util"
+import { dispatch, nextAnimationFrame } from "../../util"
+import { TimingMetric, TimingMetrics } from "../drive/visit"
 
 export class FrameController implements FetchRequestDelegate, FormInterceptorDelegate, FormSubmissionDelegate, LinkInterceptorDelegate {
   readonly element: FrameElement
@@ -13,6 +14,7 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
   readonly formInterceptor: FormInterceptor
   formSubmission?: FormSubmission
   private resolveVisitPromise = () => {}
+  timingMetrics: TimingMetrics = {}
 
   constructor(element: FrameElement) {
     this.element = element
@@ -35,7 +37,13 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
   }
 
   linkClickIntercepted(element: Element, url: string) {
-    this.navigateFrame(element, url)
+    const frame = this.findFrameElement(element)
+    const location = Location.wrap(url)
+    const event = dispatch("turbo:before-visit", { target: frame, bubbles: false, detail: { url: location.absoluteURL } })
+
+    if (!event.defaultPrevented) {
+      frame.src = url
+    }
   }
 
   shouldInterceptFormSubmission(element: HTMLFormElement) {
@@ -49,7 +57,8 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
 
     this.formSubmission = new FormSubmission(this, element, submitter)
     if (this.formSubmission.fetchRequest.isIdempotent) {
-      this.navigateFrame(element, this.formSubmission.fetchRequest.url)
+      const frame = this.findFrameElement(element)
+      frame.src = this.formSubmission.fetchRequest.url
     } else {
       this.formSubmission.start()
     }
@@ -58,13 +67,19 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
   async visit(url: Locatable) {
     const location = Location.wrap(url)
     const request = new FetchRequest(this, FetchMethod.get, location)
+    this.clearTimingMetrics()
+    this.recordTimingMetric(TimingMetric.visitStart)
 
     return new Promise<void>(resolve => {
       this.resolveVisitPromise = () => {
         this.resolveVisitPromise = () => {}
         resolve()
       }
+      dispatch("turbo:visit", { target: this.element, bubbles: false, detail: { url: location.absoluteURL } })
       request.perform()
+    }).then(() => {
+      this.recordTimingMetric(TimingMetric.visitEnd)
+      dispatch("turbo:load", { target: this.element, bubbles: false, detail: { url: location.absoluteURL, timing: this.timingMetrics } })
     })
   }
 
@@ -74,6 +89,7 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
 
   requestStarted(request: FetchRequest) {
     this.element.setAttribute("busy", "")
+    this.recordTimingMetric(TimingMetric.requestStart)
   }
 
   requestPreventedHandlingResponse(request: FetchRequest, response: FetchResponse) {
@@ -97,6 +113,7 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
 
   requestFinished(request: FetchRequest) {
     this.element.removeAttribute("busy")
+    this.recordTimingMetric(TimingMetric.requestEnd)
   }
 
   formSubmissionStarted(formSubmission: FormSubmission) {
@@ -120,11 +137,6 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
 
   }
 
-  private navigateFrame(element: Element, url: string) {
-    const frame = this.findFrameElement(element)
-    frame.src = url
-  }
-
   private findFrameElement(element: Element) {
     const id = element.getAttribute("data-turbo-frame")
     return getFrameElementById(id) ?? this.element
@@ -133,6 +145,7 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
   private async loadResponse(response: FetchResponse): Promise<void> {
     const fragment = fragmentFromHTML(await response.responseHTML)
     const element = await this.extractForeignFrameElement(fragment)
+    dispatch("turbo:before-render", { target: this.element, bubbles: false, detail: { newBody: element } })
 
     if (element) {
       await nextAnimationFrame()
@@ -141,6 +154,14 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
       await nextAnimationFrame()
       this.focusFirstAutofocusableElement()
     }
+  }
+
+  private clearTimingMetrics() {
+    this.timingMetrics = {}
+  }
+
+  private recordTimingMetric(metric: TimingMetric) {
+    this.timingMetrics[metric] = new Date().getTime()
   }
 
   private async extractForeignFrameElement(container: ParentNode): Promise<FrameElement | undefined> {
@@ -167,6 +188,7 @@ export class FrameController implements FetchRequestDelegate, FormInterceptorDel
       sourceRange.selectNodeContents(frameElement)
       this.element.appendChild(sourceRange.extractContents())
     }
+    dispatch("turbo:render", { target: this.element, bubbles: false })
   }
 
   private focusFirstAutofocusableElement(): boolean {

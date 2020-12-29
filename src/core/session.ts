@@ -13,9 +13,7 @@ import { StreamObserver } from "../observers/stream_observer"
 import { Action, Position, StreamSource, isAction } from "./types"
 import { dispatch } from "../util"
 import { View } from "./drive/view"
-import { Visit, VisitOptions } from "./drive/visit"
-
-export type TimingData = {}
+import { TimingMetrics, Visit, VisitOptions } from "./drive/visit"
 
 export class Session implements NavigatorDelegate {
   readonly navigator = new Navigator(this)
@@ -212,31 +210,31 @@ export class Session implements NavigatorDelegate {
   }
 
   notifyApplicationAfterClickingLinkToLocation(link: Element, location: Location) {
-    return dispatch("turbo:click", { target: link, detail: { url: location.absoluteURL }, cancelable: true })
+    return dispatch("turbo:click", { target: link, detail: { url: location.absoluteURL }, cancelable: true, bubbles: true })
   }
 
   notifyApplicationBeforeVisitingLocation(location: Location) {
-    return dispatch("turbo:before-visit", { detail: { url: location.absoluteURL }, cancelable: true })
+    return dispatch("turbo:before-visit", { detail: { url: location.absoluteURL }, cancelable: true, bubbles: true })
   }
 
   notifyApplicationAfterVisitingLocation(location: Location) {
-    return dispatch("turbo:visit", { detail: { url: location.absoluteURL } })
+    return dispatch("turbo:visit", { detail: { url: location.absoluteURL }, bubbles: true })
   }
 
   notifyApplicationBeforeCachingSnapshot() {
-    return dispatch("turbo:before-cache")
+    return dispatch("turbo:before-cache", { bubbles: true })
   }
 
   notifyApplicationBeforeRender(newBody: HTMLBodyElement) {
-    return dispatch("turbo:before-render", { detail: { newBody }})
+    return dispatch("turbo:before-render", { detail: { newBody }, bubbles: true })
   }
 
   notifyApplicationAfterRender() {
-    return dispatch("turbo:render")
+    return dispatch("turbo:render", { bubbles: true })
   }
 
-  notifyApplicationAfterPageLoad(timing: TimingData = {}) {
-    return dispatch("turbo:load", { detail: { url: this.location.absoluteURL, timing }})
+  notifyApplicationAfterPageLoad(timing: TimingMetrics = {}) {
+    return dispatch("turbo:load", { detail: { url: this.location.absoluteURL, timing }, bubbles: true })
   }
 
   // Private

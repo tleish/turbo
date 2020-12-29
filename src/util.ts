@@ -1,7 +1,7 @@
-export type DispatchOptions = { target: EventTarget, cancelable: boolean, detail: any }
+export type DispatchOptions = { target: EventTarget, cancelable: boolean, bubbles: boolean, detail: any }
 
-export function dispatch(eventName: string, { target, cancelable, detail }: Partial<DispatchOptions> = {}) {
-  const event = new CustomEvent(eventName, { cancelable, bubbles: true, detail })
+export function dispatch(eventName: string, { target, cancelable, bubbles, detail }: Partial<DispatchOptions> = {}) {
+  const event = new CustomEvent(eventName, { cancelable, bubbles, detail })
   void (target || document.documentElement).dispatchEvent(event)
   return event
 }

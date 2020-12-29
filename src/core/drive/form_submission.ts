@@ -90,7 +90,7 @@ export class FormSubmission {
 
   requestStarted(request: FetchRequest) {
     this.state = FormSubmissionState.waiting
-    dispatch("turbo:submit-start", { target: this.formElement, detail: { formSubmission: this } })
+    dispatch("turbo:submit-start", { target: this.formElement, detail: { formSubmission: this }, bubbles: true })
     this.delegate.formSubmissionStarted(this)
   }
 
@@ -121,7 +121,7 @@ export class FormSubmission {
 
   requestFinished(request: FetchRequest) {
     this.state = FormSubmissionState.stopped
-    dispatch("turbo:submit-end", { target: this.formElement, detail: { formSubmission: this, ...this.result }})
+    dispatch("turbo:submit-end", { target: this.formElement, detail: { formSubmission: this, ...this.result }, bubbles: true })
     this.delegate.formSubmissionFinished(this)
   }
 
