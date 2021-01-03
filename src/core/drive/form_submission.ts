@@ -78,7 +78,7 @@ export class FormSubmission {
   // Fetch request delegate
 
   additionalHeadersForRequest(request: FetchRequest) {
-    const headers: FetchRequestHeaders = {}
+    const headers: FetchRequestHeaders = { Accept: "text/html; turbo-stream" }
     if (this.method != FetchMethod.get) {
       const token = getCookieValue(getMetaContent("csrf-param")) || getMetaContent("csrf-token")
       if (token) {

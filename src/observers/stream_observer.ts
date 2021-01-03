@@ -1,4 +1,3 @@
-import { FormSubmission } from "../core/drive/form_submission"
 import { FetchResponse } from "../http/fetch_response"
 import { StreamMessage } from "../core/streams/stream_message"
 import { StreamSource } from "../core/types"
@@ -19,7 +18,6 @@ export class StreamObserver {
   start() {
     if (!this.started) {
       this.started = true
-      addEventListener("turbo:submit-start", this.prepareFormSubmission, true)
       addEventListener("turbo:before-fetch-response", this.inspectFetchResponse, false)
     }
   }
@@ -27,7 +25,6 @@ export class StreamObserver {
   stop() {
     if (this.started) {
       this.started = false
-      removeEventListener("turbo:submit-start", this.prepareFormSubmission, true)
       removeEventListener("turbo:before-fetch-response", this.inspectFetchResponse, false)
     }
   }
@@ -49,15 +46,6 @@ export class StreamObserver {
   streamSourceIsConnected(source: StreamSource) {
     return this.sources.has(source)
   }
-
-  prepareFormSubmission = <EventListener>((event: CustomEvent) => {
-    const formSubmission: FormSubmission = event.detail?.formSubmission
-    const headers: any = formSubmission.fetchRequest.fetchOptions.headers
-
-    if (headers) {
-      headers.Accept = [ "text/html; turbo-stream", headers.Accept ].join(", ")
-    }
-  })
 
   inspectFetchResponse = <EventListener>((event: CustomEvent) => {
     const response = fetchResponseFromEvent(event)
