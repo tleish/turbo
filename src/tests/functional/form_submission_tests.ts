@@ -127,6 +127,24 @@ export class FormSubmissionTests extends TurboDriveTestCase {
     this.assert.notOk(await this.turboFormSubmitted)
   }
 
+  async "test form submission skipped with form[target]"() {
+    this.listenForFormSubmissions()
+    await this.clickSelector("#skipped form[target] button")
+    await this.nextBeat
+
+    this.assert.equal(await this.pathname, "/src/tests/fixtures/form.html")
+    this.assert.notOk(await this.turboFormSubmitted)
+  }
+
+  async "test form submission skipped with submitter button[formtarget]"() {
+    this.listenForFormSubmissions()
+    await this.clickSelector("#skipped [formtarget]")
+    await this.nextBeat
+
+    this.assert.equal(await this.pathname, "/src/tests/fixtures/form.html")
+    this.assert.notOk(await this.turboFormSubmitted)
+  }
+
   listenForFormSubmissions() {
     this.remote.execute(() => addEventListener("turbo:submit-start", function eventListener(event) {
       removeEventListener("turbo:submit-start", eventListener, false)

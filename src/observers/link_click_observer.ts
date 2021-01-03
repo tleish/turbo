@@ -36,7 +36,7 @@ export class LinkClickObserver {
   clickBubbled = (event: MouseEvent) => {
     if (this.clickEventIsSignificant(event)) {
       const link = this.findLinkFromClickTarget(event.target)
-      if (link && elementIsNavigable(link)) {
+      if (link && !linkTargetsIframe(link) && elementIsNavigable(link)) {
         const location = this.getLocationForLink(link)
         if (this.delegate.willFollowLinkToLocation(link, location)) {
           event.preventDefault()
@@ -66,5 +66,13 @@ export class LinkClickObserver {
 
   getLocationForLink(link: Element) {
     return new Location(link.getAttribute("href") || "")
+  }
+}
+
+function linkTargetsIframe(link: Element): boolean {
+  if (link instanceof HTMLAnchorElement) {
+    return !!document.querySelector(`iframe[name="${link.target}"]`)
+  } else {
+    return false
   }
 }
