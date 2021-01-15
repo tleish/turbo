@@ -9,6 +9,7 @@ export interface FormSubmissionDelegate {
   formSubmissionFailedWithResponse(formSubmission: FormSubmission, fetchResponse: FetchResponse): void
   formSubmissionErrored(formSubmission: FormSubmission, error: Error): void
   formSubmissionFinished(formSubmission: FormSubmission): void
+  additionalHeadersForRequest?(request: FetchRequest): { [header: string]: string }
 }
 
 export type FormSubmissionResult
@@ -78,7 +79,7 @@ export class FormSubmission {
   // Fetch request delegate
 
   additionalHeadersForRequest(request: FetchRequest) {
-    const headers: FetchRequestHeaders = {}
+    const headers: FetchRequestHeaders = this.delegateHeadersForRequest(request)
     if (this.method != FetchMethod.get) {
       const token = getCookieValue(getMetaContent("csrf-param")) || getMetaContent("csrf-token")
       if (token) {
@@ -86,6 +87,14 @@ export class FormSubmission {
       }
     }
     return headers
+  }
+
+  delegateHeadersForRequest(request: FetchRequest) {
+    if (typeof this.delegate.additionalHeadersForRequest == "function") {
+      return this.delegate.additionalHeadersForRequest(request)
+    } else {
+      return {}
+    }
   }
 
   requestStarted(request: FetchRequest) {
